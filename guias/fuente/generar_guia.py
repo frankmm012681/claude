@@ -13,17 +13,21 @@ import os
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 LOGO_FULL = os.path.join(ASSETS, "logo-completo.png")
 LOGO_TEXT = os.path.join(ASSETS, "logo-texto.png")
+LOGO_ICON = os.path.join(ASSETS, "logo-personajes.png")
 
 # ---------- fonts ----------
 L = "/usr/share/fonts/truetype/liberation/"
 D = "/usr/share/fonts/truetype/dejavu/"
-pdfmetrics.registerFont(TTFont("Sans", L + "LiberationSans-Regular.ttf"))
-pdfmetrics.registerFont(TTFont("Sans-B", L + "LiberationSans-Bold.ttf"))
-pdfmetrics.registerFont(TTFont("Sans-I", L + "LiberationSans-Italic.ttf"))
+MS = "/usr/share/fonts/truetype/montserrat/"
+JB = "/usr/share/fonts/truetype/jetbrains-mono/"
+pdfmetrics.registerFont(TTFont("Sans", MS + "Montserrat-Regular.ttf"))
+pdfmetrics.registerFont(TTFont("Sans-B", MS + "Montserrat-Bold.ttf"))
+pdfmetrics.registerFont(TTFont("Sans-X", MS + "Montserrat-ExtraBold.ttf"))
+pdfmetrics.registerFont(TTFont("Sans-I", MS + "Montserrat-Italic.ttf"))
 pdfmetrics.registerFont(TTFont("Sym", D + "DejaVuSans.ttf"))
 pdfmetrics.registerFont(TTFont("Sym-B", D + "DejaVuSans-Bold.ttf"))
-pdfmetrics.registerFont(TTFont("Mono", D + "DejaVuSansMono.ttf"))
-pdfmetrics.registerFont(TTFont("Mono-B", D + "DejaVuSansMono-Bold.ttf"))
+pdfmetrics.registerFont(TTFont("Mono", JB + "JetBrainsMono-Regular.ttf"))
+pdfmetrics.registerFont(TTFont("Mono-B", JB + "JetBrainsMono-Bold.ttf"))
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 registerFontFamily("Sans", normal="Sans", bold="Sans-B", italic="Sans-I", boldItalic="Sans-B")
 
@@ -37,6 +41,10 @@ INK2 = HexColor("#211F26")
 INK3 = HexColor("#2A2830")
 CREAM = HexColor("#F7F3E9")
 BROWN = HexColor("#241D07")
+PAPER = HexColor("#FBF9F4")  # fondo crema para documentos de trabajo (manual de marca)
+# tonos de texto derivados para cumplir WCAG 2.2 AA (4.5:1) sobre fondo crema
+GOLD_TXT = HexColor("#8A6212")
+BLUE_TXT = HexColor("#2F6390")
 # derived tints (mixes of the brand colors with cream/white)
 CARD = HexColor("#FFFDF8")
 LINE = HexColor("#E4DCC8")
@@ -70,6 +78,8 @@ def para(text, x, ytop, w, st=BODY):
     return ytop - h
 
 def txt(s, x, y, size=10, font="Sans", color=INK, anchor="l"):
+    # el mostaza profundo y el azul no alcanzan 4.5:1 como texto: se usan sus tonos oscuros
+    color = {id(GOLD_D): GOLD_TXT, id(BLUE): BLUE_TXT}.get(id(color), color)
     c.setFont(font, size)
     c.setFillColor(color)
     if anchor == "l":
@@ -96,7 +106,7 @@ def badge(x, y, n, r=11, fill=GOLD, color=BROWN):
     c.circle(x, y, r, stroke=0, fill=1)
     txt(str(n), x, y - r * 0.36, r * 1.05, "Sans-B", color, "c")
 
-def arrow(x1, y1, x2, y2, color=GOLD_D, lw=1.6, head=6):
+def arrow(x1, y1, x2, y2, color=GOLD_TXT, lw=1.6, head=6):
     import math
     c.saveState()
     c.setStrokeColor(color)
@@ -146,7 +156,7 @@ def code_block(lines, x, ytop, w, size=9, pad=12, title=None):
     return ytop - h
 
 def callout(x, ytop, w, title, body, kind="tip"):
-    fill, accent, icon = {"tip": (GOLD_T, GOLD_D, "★"), "info": (BLUE_T, BLUE, "i"),
+    fill, accent, icon = {"tip": (GOLD_T, GOLD_TXT, "★"), "info": (BLUE_T, BLUE_TXT, "i"),
                           "warn": (RED_T, RED, "!")}[kind]
     p = Paragraph(f"<b>{title}</b><br/>{body}", style(9.5, INK, lead=13.5))
     _, ph = p.wrap(w - 52, 1000)
@@ -160,7 +170,7 @@ def callout(x, ytop, w, title, body, kind="tip"):
     return ytop - h
 
 def page_bg():
-    c.setFillColor(CREAM)
+    c.setFillColor(PAPER)
     c.rect(0, 0, W, H, stroke=0, fill=1)
 
 def header(num, title, kicker):
@@ -178,12 +188,17 @@ def header(num, title, kicker):
     c.drawImage(LOGO_TEXT, W - M - lw, H - 39 - lh / 2, lw, lh, mask="auto")
 
 def footer(n):
+    # manual de marca: logo pequeño + nombre de marca + numeración
     c.setStrokeColor(LINE)
     c.setLineWidth(0.8)
-    c.line(M, 40, W - M, 40)
-    txt("El Gigante Despierto · Cómo instalar una Skill en Claude", M, 27, 7.5, "Sans", MUTED)
-    txt("Actualizada: octubre 2026", W - M - 24, 27, 7.5, "Sans", MUTED, "r")
-    txt(str(n), W - M, 27, 8, "Sans-B", GOLD_D, "r")
+    c.line(M, 44, W - M, 44)
+    ih = 20
+    iw = ih * 1258 / 1327
+    c.drawImage(LOGO_ICON, M, 17, iw, ih, mask="auto")
+    txt("El Gigante Despierto", M + iw + 7, 28, 8, "Sans-B", INK)
+    txt("Cómo instalar una Skill en Claude · octubre 2026", M + iw + 7, 18.5, 7, "Sans", MUTED)
+    if n is not None:
+        txt(str(n), W - M, 24, 10, "Sans-B", GOLD_TXT, "r")
 
 def h2(s, y, color=INK):
     c.setFillColor(GOLD)
@@ -194,40 +209,23 @@ def h2(s, y, color=INK):
 # =====================================================================
 # PAGE 1 — COVER
 # =====================================================================
-c.setFillColor(INK)
-c.rect(0, 0, W, H, stroke=0, fill=1)
-# decorative concentric arcs (gold) top-right
-c.saveState()
-for i, col in enumerate([INK3, INK3, INK2]):
-    pass
-c.setStrokeColor(INK3)
-for r in range(60, 420, 28):
-    c.setLineWidth(1)
-    c.circle(W + 20, H - 40, r, stroke=1, fill=0)
-c.restoreState()
-
-# logo sobre tarjeta crema (el atuendo negro del personaje se perdería sobre el fondo oscuro)
-cardw, cardh = 190, 228
-cardx, cardy = W - M - cardw, H - M - cardh
-rrect(cardx, cardy, cardw, cardh, 16, fill=CREAM)
-lgw = cardw - 32
+# Portada según el manual de marca: logo centrado, eyebrow rojo, título extrabold, línea mostaza
+page_bg()
+lgw = 176
 lgh = lgw * 1632 / 1278
-c.drawImage(LOGO_FULL, cardx + 16, cardy + (cardh - lgh) / 2, lgw, lgh, mask="auto")
-
-# kicker
-txt("GUÍA PASO A PASO  ·  EDICIÓN OCTUBRE 2026", M, H - 230, 9, "Sans-B", GOLD)
+c.drawImage(LOGO_FULL, (W - lgw) / 2, H - 52 - lgh, lgw, lgh, mask="auto")
+ty = H - 52 - lgh - 40
+txt("GUÍA PASO A PASO  ·  EDICIÓN OCTUBRE 2026", W / 2, ty, 9.5, "Sans-B", RED, "c")
+txt("Cómo instalar una Skill", W / 2, ty - 46, 34, "Sans-X", INK, "c")
+txt("en Claude", W / 2, ty - 86, 34, "Sans-X", INK, "c")
 c.setFillColor(GOLD)
-c.rect(M, H - 244, 40, 3, stroke=0, fill=1)
-txt("Cómo instalar", M, H - 300, 44, "Sans-B", CREAM)
-txt("una Skill", M, H - 350, 44, "Sans-B", CREAM)
-txt("en Claude", M, H - 400, 44, "Sans-B", GOLD)
+c.rect(W / 2 - 40, ty - 108, 80, 4, stroke=0, fill=1)
 para("Activa, sube, comparte y usa skills en <b>claude.ai</b> (web y escritorio) "
      "y en <b>Claude Code</b>, con diagramas de cada paso.",
-     M, H - 428, 330, style(13, CREAM_D, lead=19))
+     W / 2 - 200, ty - 124, 400, style(12, MUTED, lead=18, align=TA_CENTER))
 
-# cover illustration: skill package going into Claude
-bx, by = M, 150
-# zip card
+# ilustración: el paquete de la skill entra a Claude
+bx, by = M + 2, 118
 rrect(bx, by, 150, 120, 12, fill=INK2, stroke=INK3)
 c.setFillColor(GOLD)
 c.rect(bx + 18, by + 82, 30, 22, stroke=0, fill=1)
@@ -235,27 +233,25 @@ c.rect(bx + 18, by + 104, 14, 5, stroke=0, fill=1)
 txt("mi-skill.zip", bx + 18, by + 60, 11, "Mono-B", CREAM)
 txt("SKILL.md", bx + 18, by + 40, 8.5, "Mono", CREAM_D)
 txt("scripts/  resources/", bx + 18, by + 26, 8.5, "Mono", CREAM_D)
-arrow(bx + 162, by + 60, bx + 232, by + 60, GOLD, 2.2, 9)
-# claude window
+arrow(bx + 162, by + 60, bx + 232, by + 60, GOLD_TXT, 2.2, 9)
 wx = bx + 244
-rrect(wx, by - 10, 255, 140, 12, fill=INK2, stroke=INK3)
+rrect(wx, by - 10, 251, 140, 12, fill=INK2, stroke=INK3)
 for i, col in enumerate([RED, GOLD, BLUE]):
     c.setFillColor(col)
     c.circle(wx + 16 + i * 12, by + 116, 3.5, stroke=0, fill=1)
 txt("Customize  ›  Skills", wx + 60, by + 112, 8.5, "Sans-B", CREAM_D)
 for i, (nm, on) in enumerate([("mi-skill", True), ("pdf", True), ("brand-guidelines", False)]):
     yy = by + 80 - i * 30
-    rrect(wx + 14, yy - 8, 227, 24, 6, fill=INK3)
+    rrect(wx + 14, yy - 8, 223, 24, 6, fill=INK3)
     txt(nm, wx + 26, yy, 9.5, "Mono", CREAM if on else CREAM_D)
-    toggle(wx + 202, yy - 3, on, 1.0)
+    toggle(wx + 198, yy - 3, on, 1.0)
 c.setStrokeColor(GOLD)
 c.setLineWidth(1.5)
-c.roundRect(wx + 11, by + 69, 233, 30, 7, stroke=1, fill=0)
+c.roundRect(wx + 11, by + 69, 229, 30, 7, stroke=1, fill=0)
 
-c.setFillColor(GOLD)
-c.rect(0, 0, W, 6, stroke=0, fill=1)
+footer(None)
 txt("Basado en la documentación oficial de Anthropic (support.claude.com y code.claude.com), consultada el 1 de octubre de 2026.",
-    M, 40, 7.5, "Sans", CREAM_D)
+    W / 2, 64, 7.5, "Sans", MUTED, "c")
 c.showPage()
 
 # =====================================================================
@@ -338,7 +334,7 @@ for i, (n, t, b) in enumerate(stages):
     rrect(bx + 14, y - 94, bw - 28, 7, 3.5, fill=LINE)
     rrect(bx + 14, y - 94, (bw - 28) * frac, 7, 3.5, fill=GOLD if i < 2 else GOLD_D)
     badge(bx + 24, y - 22, n)
-    txt(t, bx + 42, y - 26, 10.5, "Sans-B", INK)
+    txt(t, bx + 42, y - 26, 9.6, "Sans-B", INK)
     para(b, bx + 14, y - 40, bw - 28, style(8.6, MUTED, lead=11.5))
     if i < 2:
         arrow(bx + bw + 4, y - 52, bx + bw + 22, y - 52)
@@ -389,9 +385,9 @@ def mock_window(x, ytop, w, h, crumb):
 colw = (CW - 20) / 2
 lx, rx = M, M + colw + 20
 for (xx, tag, tagc, ttl) in [(lx, "FREE · PRO · MAX", GOLD_D, "Lo activas tú"),
-                             (rx, "TEAM · ENTERPRISE", BLUE, "Lo activa el propietario")]:
+                             (rx, "TEAM · ENTERPRISE", BLUE_TXT, "Lo activa el propietario")]:
     rrect(xx, y - 22, pdfmetrics.stringWidth(tag, "Sans-B", 8) + 18, 20, 10, fill=tagc)
-    txt(tag, xx + 9, y - 15, 8, "Sans-B", CARD if tagc == BLUE else BROWN)
+    txt(tag, xx + 9, y - 15, 8, "Sans-B", CARD if tagc == BLUE_TXT else BROWN)
     txt(ttl, xx, y - 42, 13, "Sans-B", INK)
 y -= 58
 
@@ -405,7 +401,7 @@ for i, s in enumerate(["General", "Account", "Privacy", "Capabilities", "Connect
 items = [("Code execution and file creation", True, True), ("Memory", True, False), ("Web search", True, False)]
 for i, (s, on, hl) in enumerate(items):
     yy = y - 58 - i * 40
-    txt(s, lx + 82, yy, 7.2 if hl else 8, "Sans-B" if hl else "Sans", INK)
+    txt(s, lx + 80, yy, 6.4 if hl else 8, "Sans-B" if hl else "Sans", INK)
     toggle(lx + colw - 40, yy - 4, on, 0.95)
     if hl:
         c.setStrokeColor(GOLD_D)
@@ -423,7 +419,7 @@ for i, (s, act) in enumerate([("Directory", False), ("Policy", True), ("Requests
     if act:
         c.setFillColor(BLUE)
         c.rect(tx_, y - 52, pdfmetrics.stringWidth(s, "Sans-B", 8), 2, stroke=0, fill=1)
-        badge(tx_ + 44, y - 36, 1, 8, BLUE, CARD)
+        badge(tx_ + 44, y - 36, 1, 8, BLUE_TXT, CARD)
 items = [("Cloud code execution and file creation", True), ("Skills", True)]
 for i, (s, on) in enumerate(items):
     yy = y - 84 - i * 40
@@ -432,7 +428,7 @@ for i, (s, on) in enumerate(items):
     c.setStrokeColor(BLUE)
     c.setLineWidth(1.6)
     c.roundRect(rx + 8, yy - 12, colw - 16, 28, 6, stroke=1, fill=0)
-    badge(rx + colw - 6, yy + 16, i + 2, 9, BLUE, CARD)
+    badge(rx + colw - 6, yy + 16, i + 2, 9, BLUE_TXT, CARD)
 txt("Menú: Organization settings → Plugins & skills", rx + 14, y - 182, 7.5, "Sans-I", MUTED)
 y -= 216
 
@@ -453,7 +449,7 @@ ry = steps(rx, y, colw, [
     "El propietario abre <b>Organization settings → Plugins &amp; skills</b>.",
     "En la pestaña <b>Policy</b>, activa <b>Cloud code execution and file creation</b>.",
     "En la misma pestaña, activa <b>Skills</b>.",
-], BLUE, CARD)
+], BLUE_TXT, CARD)
 y = min(ly, ry) - 14
 y = callout(M, y, CW, "¿Tu Claude está en español?",
             "Los menús aparecen traducidos (por ejemplo, <i>Settings</i> = Configuración, <i>Capabilities</i> = Capacidades). "
@@ -666,8 +662,8 @@ y -= 20
 
 # three route cards
 routes = [
-    ("A", "Copiar la carpeta", BLUE, "Pon la carpeta de la skill en la ruta adecuada. Claude Code la detecta al momento, sin reiniciar."),
-    ("B", "Plugin / marketplace", GOLD_D, "Instala un plugin que trae una o varias skills con el comando /plugin."),
+    ("A", "Copiar la carpeta", BLUE_TXT, "Pon la carpeta de la skill en la ruta adecuada. Claude Code la detecta al momento, sin reiniciar."),
+    ("B", "Marketplace", GOLD_D, "Instala un plugin que trae una o varias skills con el comando /plugin."),
     ("C", "Sincronizar cuenta", RED, "Al iniciar sesión, tus skills de claude.ai se sincronizan (versión 2.1.273 o superior)."),
 ]
 rw3 = (CW - 2 * 12) / 3
@@ -677,10 +673,10 @@ for i, (l, t, col, b) in enumerate(routes):
     c.setFillColor(col)
     c.rect(rx_, y - 4, rw3, 4, stroke=0, fill=1)
     c.roundRect(rx_ + 12, y - 38, 24, 24, 6, stroke=0, fill=1)
-    txt(l, rx_ + 24, y - 31, 12, "Sans-B", CARD, "c")
+    txt(l, rx_ + 24, y - 31, 12, "Sans-B", BROWN if col == GOLD_D else CARD, "c")
     txt(t, rx_ + 44, y - 30, 10.5, "Sans-B", INK)
     para(b, rx_ + 12, y - 48, rw3 - 24, style(8.6, MUTED, lead=12))
-y -= 132
+y -= 144
 
 y = h2("A · ¿Dónde guardar la carpeta?", y)
 y -= 14
@@ -688,7 +684,7 @@ y -= 14
 sx, sw, sh = M, CW, 118
 rows = [
     ("Personal", "~/.claude/skills/<nombre>/SKILL.md", "Todos tus proyectos en esta computadora", GOLD),
-    ("Proyecto", ".claude/skills/<nombre>/SKILL.md", "Solo este repositorio · súbela a git para compartirla", BLUE),
+    ("Proyecto", ".claude/skills/<nombre>/SKILL.md", "Solo este repositorio · súbela a git para compartirla", BLUE_TXT),
     ("Plugin", "<plugin>/skills/<nombre>/SKILL.md", "Donde el plugin esté activado", GOLD_D),
 ]
 for i, (k, path, desc, col) in enumerate(rows):
@@ -696,7 +692,7 @@ for i, (k, path, desc, col) in enumerate(rows):
     rrect(sx, yy - 32, sw, 32, 7, fill=INK if i % 2 == 0 else INK2)
     c.setFillColor(col)
     c.roundRect(sx + 8, yy - 25, 74, 18, 9, stroke=0, fill=1)
-    txt(k, sx + 45, yy - 19.5, 8.5, "Sans-B", BROWN if col != BLUE else CARD, "c")
+    txt(k, sx + 45, yy - 19.5, 8.5, "Sans-B", CARD if col == BLUE_TXT else BROWN, "c")
     txt(path, sx + 94, yy - 19.5, 8.8, "Mono", CREAM)
     txt(desc, sx + sw - 12, yy - 19.5, 7.8, "Sans", CREAM_D, "r")
 y -= 3 * 38 + 18
@@ -716,7 +712,7 @@ y = cb - 20
 y = h2("Usar y revisar tus skills", y)
 y -= 12
 uses = [
-    ("/nombre-skill", "Invocar una skill directamente (con argumentos si los acepta)."),
+    ("/nombre-skill", "Invocar una skill directamente, con o sin argumentos."),
     ("/plugin:skill", "Invocar una skill que viene dentro de un plugin."),
     ("/skills", "Ver tus skills, incluidas las sincronizadas."),
     ("/skill-doctor", "Detectar skills que no usas y cuánto contexto ocupan."),
@@ -739,7 +735,7 @@ c.showPage()
 # PAGE 7 — COMPARTIR + SEGURIDAD
 # =====================================================================
 pg = 7
-header("06", "Compartir skills y usarlas con seguridad", "Equipos y buenas prácticas")
+header("06", "Compartir y usar con seguridad", "Equipos y buenas prácticas")
 y = H - 112
 y = h2("Compartir en Team y Enterprise", y)
 y -= 14
@@ -763,8 +759,8 @@ for i, (t, d, tag, col) in enumerate(opts):
     c.rect(ox, oy - 56, 4, 56, stroke=0, fill=1)
     txt(t, ox + 14, oy - 17, 10, "Sans-B", INK)
     tw = pdfmetrics.stringWidth(tag, "Sans-B", 7)
-    rrect(ox + ow_ - tw - 22, oy - 22, tw + 12, 14, 7, fill=col)
-    txt(tag, ox + ow_ - 16, oy - 17.5, 7, "Sans-B", CARD, "r")
+    rrect(ox + ow_ - tw - 22, oy - 22, tw + 12, 14, 7, fill=BLUE_TXT if col == BLUE else col)
+    txt(tag, ox + ow_ - 16, oy - 17.5, 7, "Sans-B", BROWN if col == GOLD_D else CARD, "r")
     para(d, ox + 14, oy - 24, ow_ - 28, style(8.4, MUTED, lead=11))
     # connector from author card
     c.setStrokeColor(col); c.setLineWidth(1.3)
@@ -855,13 +851,13 @@ summ = [
 sw4 = (CW - 3 * 16) / 4
 for i, (n, t, d) in enumerate(summ):
     sx_ = M + i * (sw4 + 16)
-    rrect(sx_, y - 110, sw4, 110, 10, fill=INK)
+    rrect(sx_, y - 122, sw4, 122, 10, fill=INK)
     txt(n, sx_ + 14, y - 34, 26, "Sans-B", GOLD)
     txt(t, sx_ + 14, y - 56, 12, "Sans-B", CREAM)
     para(d, sx_ + 14, y - 64, sw4 - 28, style(8.4, CREAM_D, lead=11.5))
     if i < 3:
         arrow(sx_ + sw4 + 2, y - 55, sx_ + sw4 + 14, y - 55, GOLD, 1.8, 6)
-y -= 132
+y -= 144
 
 y = h2("Fuentes oficiales", y)
 y -= 12
