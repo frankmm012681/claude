@@ -9,6 +9,10 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 import sys
 
 OUT = sys.argv[1]
+import os
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+LOGO_FULL = os.path.join(ASSETS, "logo-completo.png")
+LOGO_TEXT = os.path.join(ASSETS, "logo-texto.png")
 
 # ---------- fonts ----------
 L = "/usr/share/fonts/truetype/liberation/"
@@ -168,15 +172,17 @@ def header(num, title, kicker):
     txt(num, M, H - 50, 26, "Sans-B", GOLD)
     nw = pdfmetrics.stringWidth(num, "Sans-B", 26)
     txt(kicker.upper(), M + nw + 14, H - 34, 7.5, "Sans-B", GOLD)
-    txt(title, M + nw + 14, H - 52, 17, "Sans-B", CREAM)
-    logo_slot(W - M - 78, H - 60, 78, 36)
+    txt(title, M + nw + 14, H - 52, 16, "Sans-B", CREAM)
+    lh = 24
+    lw = lh * 1278 / 282
+    c.drawImage(LOGO_TEXT, W - M - lw, H - 39 - lh / 2, lw, lh, mask="auto")
 
 def footer(n):
     c.setStrokeColor(LINE)
     c.setLineWidth(0.8)
     c.line(M, 40, W - M, 40)
-    txt("Guía · Cómo instalar una Skill en Claude", M, 27, 7.5, "Sans", MUTED)
-    txt("Actualizada: octubre 2026", W / 2, 27, 7.5, "Sans", MUTED, "c")
+    txt("El Gigante Despierto · Cómo instalar una Skill en Claude", M, 27, 7.5, "Sans", MUTED)
+    txt("Actualizada: octubre 2026", W - M - 24, 27, 7.5, "Sans", MUTED, "r")
     txt(str(n), W - M, 27, 8, "Sans-B", GOLD_D, "r")
 
 def h2(s, y, color=INK):
@@ -200,7 +206,13 @@ for r in range(60, 420, 28):
     c.circle(W + 20, H - 40, r, stroke=1, fill=0)
 c.restoreState()
 
-logo_slot(M, H - M - 44, 120, 44)
+# logo sobre tarjeta crema (el atuendo negro del personaje se perdería sobre el fondo oscuro)
+cardw, cardh = 190, 228
+cardx, cardy = W - M - cardw, H - M - cardh
+rrect(cardx, cardy, cardw, cardh, 16, fill=CREAM)
+lgw = cardw - 32
+lgh = lgw * 1632 / 1278
+c.drawImage(LOGO_FULL, cardx + 16, cardy + (cardh - lgh) / 2, lgw, lgh, mask="auto")
 
 # kicker
 txt("GUÍA PASO A PASO  ·  EDICIÓN OCTUBRE 2026", M, H - 230, 9, "Sans-B", GOLD)
